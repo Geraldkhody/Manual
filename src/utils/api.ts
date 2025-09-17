@@ -38,7 +38,11 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userData');
       localStorage.removeItem('workerData');
-      window.location.href = '/login';
+      
+      // Only redirect if not already on login page
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -46,8 +50,9 @@ apiClient.interceptors.response.use(
 
 // API endpoints
 export const endpoints = {
-  login: '/accounts/login/',
-  workers: '/workers', // Assuming this endpoint exists for worker data
+  login: '/accounts/login/?phone=phone',
+  workers: '/webapp/worker-profile/staff-access',
+  createWorker: '/webapp/worker-profile/staff-access',
 } as const;
 
 export default apiClient;

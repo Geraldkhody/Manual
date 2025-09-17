@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-// import axios from 'axios';  // COMMENTED OUT: Not needed for mock implementation
-// import { apiClient, endpoints } from '../utils/api';  // COMMENTED OUT: Not needed for mock implementation
+import axios from 'axios';
+import { apiClient, endpoints } from '../utils/api';
 
 interface LoginProps {
   onLogin: (phone: string, password: string) => void;
@@ -45,129 +45,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     try {
       // Log the request for debugging
       console.log('Login request:', {
-        url: '/accounts/login/', // Mock endpoint
+        url: endpoints.login,
         payload: { phone, password }
       });
 
-      // MOCK API RESPONSE - Using mock data instead of real backend
-      const isMockCredentials = phone === '0245767665' && password === 'thethethe';
-      
-      let response;
-      
-      if (isMockCredentials) {
-        // Mock successful response
-        console.log('✅ Using mock API response - Login successful');
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
-        
-        response = {
-          data: {
-            "message": "Login successful",
-            "user": {
-              "id": "ad488076-cb3d-4e94-931f-3a0030970a45",
-              "town": {
-                "id": "2d22acb6-430c-467e-9784-7d8f139921dc",
-                "city": "a74e0b46-a682-44f6-8d73-c362160d9942",
-                "created_at": "2025-06-11T10:28:54.557003Z",
-                "updated_at": "2025-06-11T10:28:54.557016Z",
-                "name": "Nkoransah",
-                "clxr": 1.0,
-                "lat": "6.593130",
-                "lon": "-1.661704"
-              },
-              "on_android": false,
-              "on_ios": true,
-              "fcm_token": "clBY3IzUT1q0_hJuFsdJOx:APA91bEzTKSLR4JREgbdQP20Tz9gMbHVxYX5TLb9xToBR_5_xw64Y_wsJ1ysmSlbFhYIMgelKhxNCXk6xbD_gdB2-m50ACT9oWJaGgPcx5yVD5uY4mEflgY",
-              "photo": "https://olapy-bucket.lon1.cdn.digitaloceanspaces.com/media/public/profile_photos/emma-passport.jpeg",
-              "first_name": "Emmanuel",
-              "last_name": "Owusu",
-              "email": "emmanuel.owusu.dev@gmail.com",
-              "phone_number": "0245767665",
-              "street_address": null,
-              "digital_address": null,
-              "gender": "Male",
-              "date_of_birth": "2001-04-27",
-              "referral_code": "codingrev",
-              "referred_by": null,
-              "is_active": true,
-              "date_joined": "2025-06-11T10:40:03.704196Z",
-              "last_login": "2025-09-17T19:09:29.725736Z",
-              "last_seen": null,
-              "country": "3356a971-a7ab-4e69-9d22-563f179c1997"
-            },
-            "tokens": [
-              {
-                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzg5NjcyNjk3LCJpYXQiOjE3NTgxMzY2OTcsImp0aSI6ImVkZTUzNjZiMGQxOTRiYmJiODcwNzFlYjBlNjVkODg3IiwidXNlcl9pZCI6ImFkNDg4MDc2LWNiM2QtNGU5NC05MzFmLTNhMDAzMDk3MGE0NSJ9.PHVsxdNZNvJu_Gjeest4vSiUfBMkB1Q9MJ50G38df3o",
-                "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc4OTY3MjY5NywiaWF0IjoxNzU4MTM2Njk3LCJqdGkiOiIxODJmYTY1MzU1NDE0M2I2OTkzMTg4NTIwNWRiNDVkYSIsInVzZXJfaWQiOiJhZDQ4ODA3Ni1jYjNkLTRlOTQtOTMxZi0zYTAwMzA5NzBhNDUifQ.FfFNgC8N0GeEjm5HKkneM__sKrce_9aGq780LwwNdbc"
-              }
-            ],
-            "worker": {
-              "id": "c8910b4e-3c1c-4f6c-bebf-a15744ce171f",
-              "user": {
-                "id": "ad488076-cb3d-4e94-931f-3a0030970a45",
-                "town": {
-                  "id": "2d22acb6-430c-467e-9784-7d8f139921dc",
-                  "city": "a74e0b46-a682-44f6-8d73-c362160d9942",
-                  "created_at": "2025-06-11T10:28:54.557003Z",
-                  "updated_at": "2025-06-11T10:28:54.557016Z",
-                  "name": "Nkoransah",
-                  "clxr": 1.0,
-                  "lat": "6.593130",
-                  "lon": "-1.661704"
-                },
-                "on_android": false,
-                "on_ios": true,
-                "fcm_token": "clBY3IzUT1q0_hJuFsdJOx:APA91bEzTKSLR4JREgbdQP20Tz9gMbHVxYX5TLb9xToBR_5_xw64Y_wsJ1ysmSlbFhYIMgelKhxNCXk6xbD_gdB2-m50ACT9oWJaGgPcx5yVD5uY4mEflgY",
-                "photo": "https://olapy-bucket.lon1.cdn.digitaloceanspaces.com/media/public/profile_photos/emma-passport.jpeg",
-                "first_name": "Emmanuel",
-                "last_name": "Owusu",
-                "email": "emmanuel.owusu.dev@gmail.com",
-                "phone_number": "0245767665",
-                "street_address": null,
-                "digital_address": null,
-                "gender": "Male",
-                "date_of_birth": "2001-04-27",
-                "referral_code": "codingrev",
-                "referred_by": null,
-                "is_active": true,
-                "date_joined": "2025-06-11T10:40:03.704196Z",
-                "last_login": "2025-09-17T19:09:29.725736Z",
-                "last_seen": null,
-                "country": "3356a971-a7ab-4e69-9d22-563f179c1997"
-              },
-              "created_at": "2025-06-11T10:43:22.794994Z",
-              "updated_at": "2025-08-24T16:24:10.559429Z",
-              "bio": "Experience Software Engineer with 6+ years of experience building reliable and scalable backend services, APIs for companies across Europe and Africa in Fintech, Healthcare, E-Commerce, TravelTech, Edutech and Developer Tools.",
-              "rating": 5.0,
-              "completed_jobs": 20,
-              "momo_account_number": "0245767665",
-              "momo_account_name": "Emmanuel Owusu",
-              "is_online": true,
-              "is_available": true,
-              "premium_service": true,
-              "is_agency": false,
-              "verified_worker": true,
-              "primary_profession": "84ad6993-0287-4be8-95aa-ac7c3489c2e9",
-              "profesion_categories": []
-            }
-          },
-          status: 200
-        };
-      } else {
-        // Show error for invalid credentials when using mock
-        console.log('❌ Invalid mock credentials');
-        throw new Error('Invalid credentials. Please use the mock credentials provided.');
-      }
-
-      // COMMENTED OUT: Real API call - uncomment when backend is available
-      /*
-      import axios from 'axios';
-      import { apiClient, endpoints } from '../utils/api';
-      
-      response = await apiClient.post(endpoints.login, {
+      // REAL API CALL - Using actual backend
+      const response = await apiClient.post(endpoints.login, {
         phone: phone,
         password: password
       });
-      */
+
+     
 
       console.log('Login response:', response.data);
 
@@ -201,15 +89,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     } catch (error) {
       console.error('Login failed:', error);
       
-      // MOCK ERROR HANDLING - Simplified for mock implementation
-      if (error instanceof Error) {
-        setErrors(prev => ({ ...prev, api: error.message }));
-      } else {
-        setErrors(prev => ({ ...prev, api: 'Invalid credentials. Please use the mock credentials provided.' }));
-      }
-
-      // COMMENTED OUT: Real API error handling - uncomment when backend is available
-      /*
+      // REAL API ERROR HANDLING
       if (axios.isAxiosError(error)) {
         if (error.response) {
           // Server responded with error status
@@ -233,6 +113,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         }
       } else {
         setErrors(prev => ({ ...prev, api: 'An unexpected error occurred.' }));
+      }
+
+      // COMMENTED OUT: Mock error handling - uncomment for testing without backend  
+      /*
+      if (error instanceof Error) {
+        setErrors(prev => ({ ...prev, api: error.message }));
+      } else {
+        setErrors(prev => ({ ...prev, api: 'Invalid credentials. Please use the mock credentials provided.' }));
       }
       */
     } finally {
@@ -359,13 +247,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             </div>
           </form>
 
-           {/* Mock Demo credentials */}
-           <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
-             <h3 className="text-sm font-medium text-green-800 mb-2">🎯 Mock Credentials (ONLY VALID CREDENTIALS):</h3>
-             <p className="text-xs text-green-700 font-medium">Phone: 0245767665</p>
-             <p className="text-xs text-green-700 font-medium">Password: thethethe</p>
-             <p className="text-xs text-green-600 mt-1">⚠️ Real backend is disabled - use these credentials only</p>
-           </div>
+           {/* API Info */}
+           {/* <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+             <h3 className="text-sm font-medium text-blue-800 mb-2">🔗 API Connection Active</h3>
+             <p className="text-xs text-blue-700">Using real backend API for authentication</p>
+             <p className="text-xs text-blue-600 mt-1">Enter your valid phone number and password to login</p>
+           </div> */}
         </div>
 
         {/* Footer */}
