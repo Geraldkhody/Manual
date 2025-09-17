@@ -135,8 +135,8 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
     
     const matchesSearch = fullName.toLowerCase().includes(searchLower) ||
                          (worker.email && worker.email.toLowerCase().includes(searchLower)) ||
-                         (worker.primary_profession && worker.primary_profession.toLowerCase().includes(searchLower)) ||
-                         (worker.secondary_profession && worker.secondary_profession.toLowerCase().includes(searchLower)) ||
+                         (worker.primary_profession && typeof worker.primary_profession === 'string' && worker.primary_profession.toLowerCase().includes(searchLower)) ||
+                         (worker.secondary_profession && typeof worker.secondary_profession === 'string' && worker.secondary_profession.toLowerCase().includes(searchLower)) ||
                          (worker.phone && worker.phone.toLowerCase().includes(searchLower));
     
     const matchesFilter = filterStatus === 'all' || 
@@ -193,6 +193,26 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
       if (Array.isArray(workersData)) {
         // Validate and transform each worker object to ensure it has required fields
         const validatedWorkers = workersData.map((worker: any) => {
+          // Handle primary_profession - it can be an object or string
+          let primaryProfession = 'Worker';
+          if (worker.primary_profession) {
+            if (typeof worker.primary_profession === 'string') {
+              primaryProfession = worker.primary_profession;
+            } else if (typeof worker.primary_profession === 'object' && worker.primary_profession.name) {
+              primaryProfession = worker.primary_profession.name;
+            }
+          }
+          
+          // Handle secondary_profession - it can be an object or string
+          let secondaryProfession = null;
+          if (worker.secondary_profession) {
+            if (typeof worker.secondary_profession === 'string') {
+              secondaryProfession = worker.secondary_profession;
+            } else if (typeof worker.secondary_profession === 'object' && worker.secondary_profession.name) {
+              secondaryProfession = worker.secondary_profession.name;
+            }
+          }
+          
           // Ensure all required fields exist with fallback values
           return {
             id: worker.id || `worker-${Date.now()}-${Math.random()}`,
@@ -204,8 +224,8 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
             residential_address: worker.residential_address || null,
             digital_address: worker.digital_address || null,
             bio: worker.bio || '',
-            primary_profession: worker.primary_profession || worker.profession || 'Worker',
-            secondary_profession: worker.secondary_profession || null,
+            primary_profession: primaryProfession,
+            secondary_profession: secondaryProfession,
             business_certificate: worker.business_certificate || null,
             id_card_type: worker.id_card_type || 'ID Card',
             id_card_front: worker.id_card_front || null,
@@ -223,6 +243,7 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
         
         setWorkers(validatedWorkers);
         console.log(`✅ Loaded ${validatedWorkers.length} workers from API`);
+        console.log('Sample transformed worker:', validatedWorkers[0]);
       } else {
         throw new Error('Invalid API response format');
       }

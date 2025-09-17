@@ -29,7 +29,7 @@ const WorkerCard: React.FC<WorkerCardProps> = ({ worker, onViewProfile }) => {
               <h3 className="text-lg font-semibold text-gray-900 truncate">
                 {worker.first_name} {worker.last_name}
               </h3>
-              <p className="text-sm text-gray-600 mt-1">d</p>
+              <p className="text-sm text-gray-600 mt-1">{worker.primary_profession}</p>
             </div>
             
             {/* Status Badge */}
