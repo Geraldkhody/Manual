@@ -12,10 +12,17 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
-    email: '',
-    phone: '',
-    bio: '',
+    phone_number: '',
+    identification_card: '',
     primary_profession: '',
+    digital_address: '',
+    street_address: '',
+    gender: '',
+    professional_categories: '',
+    photo: '',
+    business_certificate: '',
+    id_card_front: '',
+    id_card_back: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -26,8 +33,14 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
     'Software Engineer', 'Graphic Designer', 'Electrician', 'Plumber', 'Carpenter',
     'Teacher', 'Nurse', 'Doctor', 'Lawyer', 'Accountant', 'Marketing Specialist',
     'Web Developer', 'Data Analyst', 'Project Manager', 'Sales Representative',
-    'Chef', 'Mechanic', 'Tailor', 'Hairdresser', 'Photographer', 'Other'
+    'Chef', 'Mechanic', 'Tailor', 'Hairdresser', 'Photographer', 'Babysitter / Nanny', 'Other'
   ];
+
+  // Gender options
+  const genderOptions = ['Male', 'Female', 'Other'];
+
+  // ID card types
+  const idCardTypes = ['Ghana Card', 'Passport', 'Driver\'s License', 'Voter ID'];
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -35,10 +48,17 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
       setFormData({
         first_name: '',
         last_name: '',
-        email: '',
-        phone: '',
-        bio: '',
+        phone_number: '',
+        identification_card: '',
         primary_profession: '',
+        digital_address: '',
+        street_address: '',
+        gender: '',
+        professional_categories: '',
+        photo: '',
+        business_certificate: '',
+        id_card_front: '',
+        id_card_back: '',
       });
       setErrors({});
       setIsSubmitting(false);
@@ -79,15 +99,15 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
 
     if (!formData.first_name.trim()) newErrors.first_name = 'First name is required';
     if (!formData.last_name.trim()) newErrors.last_name = 'Last name is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
+    if (!formData.phone_number.trim()) newErrors.phone_number = 'Phone number is required';
+    if (!formData.identification_card.trim()) newErrors.identification_card = 'Identification card is required';
     if (!formData.primary_profession.trim()) newErrors.primary_profession = 'Primary profession is required';
-    if (!formData.bio.trim()) newErrors.bio = 'Bio is required';
+    if (!formData.gender.trim()) newErrors.gender = 'Gender is required';
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+    // Phone validation
+    const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
+    if (formData.phone_number && !phoneRegex.test(formData.phone_number.replace(/\s/g, ''))) {
+      newErrors.phone_number = 'Please enter a valid phone number';
     }
 
     setErrors(newErrors);
@@ -102,50 +122,66 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
     setIsSubmitting(true);
 
     try {
-      // Generate a unique ID for the new worker
-      const workerId = `w${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      const newWorker: Worker = {
-        id: workerId,
-        profile_photo: `https://ui-avatars.com/api/?name=${formData.first_name}+${formData.last_name}&background=3B82F6&color=fff`,
+      // Prepare API payload with correct field names
+      const apiPayload = {
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        residential_address: null,
-        digital_address: null,
-        bio: formData.bio.trim(),
+        phone_number: formData.phone_number.trim(),
+        identification_card: formData.identification_card.trim(),
         primary_profession: formData.primary_profession.trim(),
-        secondary_profession: null,
-        business_certificate: null,
-        id_card_type: 'Ghana Card',
-        id_card_front: null,
-        id_card_back: null,
-        status: 'active',
-        rating: 0,
-        completed_jobs: 0,
-        is_online: false,
-        is_available: true,
-        verified_worker: false,
-        premium_service: false,
-        join_date: new Date().toISOString().split('T')[0]
+        digital_address: formData.digital_address.trim() || null,
+        street_address: formData.street_address.trim() || null,
+        gender: formData.gender.trim(),
+        professional_categories: formData.professional_categories.trim() || null,
+        photo: formData.photo.trim() || null,
+        business_certificate: formData.business_certificate.trim() || null,
+        id_card_front: formData.id_card_front.trim() || null,
+        id_card_back: formData.id_card_back.trim() || null,
       };
 
       try {
-        // Try to submit to API first
-        const response = await apiClient.post(endpoints.createWorker, newWorker);
+        // Submit to API
+        const response = await apiClient.post(endpoints.createWorker, apiPayload);
         console.log('✅ Worker created successfully:', response.data);
-        onWorkerAdded(response.data);
-      } catch (apiError) {
-        console.log('⚠️ API submission failed, adding worker locally:', apiError);
-        // If API fails, still add the worker to the local state
+        
+        // Transform API response to Worker format for local state
+        const newWorker: Worker = {
+          id: response.data.id || response.data.user?.id,
+          profile_photo: response.data.user?.profile_photo || `https://ui-avatars.com/api/?name=${formData.first_name}+${formData.last_name}&background=3B82F6&color=fff`,
+          first_name: response.data.user?.first_name || formData.first_name.trim(),
+          last_name: response.data.user?.last_name || formData.last_name.trim(),
+          email: response.data.user?.email || '',
+          phone: response.data.user?.phone || formData.phone_number.trim(),
+          residential_address: response.data.user?.residential_address || formData.street_address.trim(),
+          digital_address: response.data.user?.digital_address || formData.digital_address.trim(),
+          bio: response.data.user?.bio || '',
+          primary_profession: response.data.primary_profession?.name || formData.primary_profession.trim(),
+          secondary_profession: response.data.secondary_profession?.name || null,
+          business_certificate: response.data.business_certificate || formData.business_certificate.trim(),
+          id_card_type: response.data.user?.id_card_type || formData.identification_card.trim(),
+          id_card_front: response.data.id_card_front || formData.id_card_front.trim(),
+          id_card_back: response.data.id_card_back || formData.id_card_back.trim(),
+          status: response.data.user?.status || 'active',
+          rating: response.data.user?.rating || 0,
+          completed_jobs: response.data.user?.completed_jobs || 0,
+          is_online: response.data.user?.is_online || false,
+          is_available: response.data.user?.is_available || true,
+          verified_worker: response.data.user?.verified_worker || false,
+          premium_service: response.data.user?.premium_service || false,
+          join_date: response.data.user?.join_date || new Date().toISOString().split('T')[0]
+        };
+        
         onWorkerAdded(newWorker);
+      } catch (apiError) {
+        console.error('❌ API submission failed:', apiError);
+        setErrors({ phone_number: 'Failed to create worker. Please try again.' });
+        return;
       }
 
       onClose();
     } catch (error) {
       console.error('❌ Failed to create worker:', error);
-      setErrors({ email: 'Failed to create worker. Please try again.' });
+      setErrors({ phone_number: 'Failed to create worker. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -222,36 +258,105 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email <span className="text-red-500">*</span>
+                    Phone Number <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
+                    type="tel"
+                    name="phone_number"
+                    value={formData.phone_number}
                     onChange={handleInputChange}
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.email ? 'border-red-500' : 'border-gray-300'
+                      errors.phone_number ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="Enter email address"
+                    placeholder="+233 24 123 4567"
                   />
-                  {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+                  {errors.phone_number && <p className="mt-1 text-sm text-red-600">{errors.phone_number}</p>}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone <span className="text-red-500">*</span>
+                    Gender <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
+                  <select
+                    name="gender"
+                    value={formData.gender}
                     onChange={handleInputChange}
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.phone ? 'border-red-500' : 'border-gray-300'
+                      errors.gender ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="+233 24 123 4567"
+                  >
+                    <option value="">Select gender</option>
+                    {genderOptions.map(gender => (
+                      <option key={gender} value={gender}>{gender}</option>
+                    ))}
+                  </select>
+                  {errors.gender && <p className="mt-1 text-sm text-red-600">{errors.gender}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Identification Card <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="identification_card"
+                    value={formData.identification_card}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.identification_card ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select ID type</option>
+                    {idCardTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                  {errors.identification_card && <p className="mt-1 text-sm text-red-600">{errors.identification_card}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Professional Categories
+                  </label>
+                  <input
+                    type="text"
+                    name="professional_categories"
+                    value={formData.professional_categories}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., Healthcare, Technology, Construction"
                   />
-                  {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Digital Address
+                  </label>
+                  <input
+                    type="text"
+                    name="digital_address"
+                    value={formData.digital_address}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., GA-123-4567"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Street Address
+                  </label>
+                  <input
+                    type="text"
+                    name="street_address"
+                    value={formData.street_address}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., 123 Main Street, Accra"
+                  />
                 </div>
               </div>
 
@@ -275,21 +380,64 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
                 {errors.primary_profession && <p className="mt-1 text-sm text-red-600">{errors.primary_profession}</p>}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Bio <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.bio ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Tell us about yourself and your experience..."
-                />
-                {errors.bio && <p className="mt-1 text-sm text-red-600">{errors.bio}</p>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Photo URL
+                  </label>
+                  <input
+                    type="url"
+                    name="photo"
+                    value={formData.photo}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://example.com/photo.jpg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Business Certificate URL
+                  </label>
+                  <input
+                    type="url"
+                    name="business_certificate"
+                    value={formData.business_certificate}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://example.com/certificate.pdf"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ID Card Front URL
+                  </label>
+                  <input
+                    type="url"
+                    name="id_card_front"
+                    value={formData.id_card_front}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://example.com/id-front.jpg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ID Card Back URL
+                  </label>
+                  <input
+                    type="url"
+                    name="id_card_back"
+                    value={formData.id_card_back}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://example.com/id-back.jpg"
+                  />
+                </div>
               </div>
 
             </div>
