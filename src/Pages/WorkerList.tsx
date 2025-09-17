@@ -191,10 +191,12 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
       console.log('Workers data:', workersData[0].user.first_name);
       
       if (Array.isArray(workersData)) {
-        // Validate and transform each worker object to ensure it has required fields
+        // Transform API data to match our interface - only use actual data from API
         const validatedWorkers = workersData.map((worker: any) => {
-          // Handle primary_profession - it can be an object or string
-          let primaryProfession = 'Worker';
+          const newWorker = worker.user;
+          
+          // Handle primary_profession - extract name from object if it exists
+          let primaryProfession = '';
           if (worker.primary_profession) {
             if (typeof worker.primary_profession === 'string') {
               primaryProfession = worker.primary_profession;
@@ -203,7 +205,7 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
             }
           }
           
-          // Handle secondary_profession - it can be an object or string
+          // Handle secondary_profession - extract name from object if it exists
           let secondaryProfession = null;
           if (worker.secondary_profession) {
             if (typeof worker.secondary_profession === 'string') {
@@ -212,34 +214,32 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
               secondaryProfession = worker.secondary_profession.name;
             }
           }
-
-          const newWorker = worker.user;
           
-          // Ensure all required fields exist with fallback values
+          // Only use data that exists in the API response
           return {
-            id: newWorker.id || `worker-${Date.now()}-${Math.random()}`,
-            profile_photo: newWorker.profile_photo || 'https://ui-avatars.com/api/?name=Worker&background=3B82F6&color=fff',
-            first_name: newWorker.first_name || newWorker.name || 'Unknown',
-            last_name: newWorker.last_name || '',
-            email: newWorker.email || '',
-            phone: newWorker.phone || '',
-            residential_address: newWorker.residential_address || null,
-            digital_address: newWorker.digital_address || null,
-            bio: newWorker.bio || '',
+            id: newWorker.id,
+            profile_photo: newWorker.profile_photo,
+            first_name: newWorker.first_name,
+            last_name: newWorker.last_name,
+            email: newWorker.email,
+            phone: newWorker.phone,
+            residential_address: newWorker.residential_address,
+            digital_address: newWorker.digital_address,
+            bio: newWorker.bio,
             primary_profession: primaryProfession,
             secondary_profession: secondaryProfession,
-            business_certificate: newWorker.business_certificate || null,
-            id_card_type: newWorker.id_card_type || 'ID Card',
-            id_card_front: newWorker.id_card_front || null,
-            id_card_back: newWorker.id_card_back || null,
-            status: newWorker.status || 'active',
-            rating: typeof newWorker.rating === 'number' ? newWorker.rating : 0,
-            completed_jobs: typeof newWorker.completed_jobs === 'number' ? newWorker.completed_jobs : 0,
-            is_online: Boolean(newWorker.is_online),
-            is_available: Boolean(newWorker.is_available),
-            verified_newWorker: Boolean(newWorker.verified_newWorker),
-            premium_service: Boolean(newWorker.premium_service),
-            join_date: newWorker.join_date || newWorker.created_at || new Date().toISOString().split('T')[0]
+            business_certificate: newWorker.business_certificate,
+            id_card_type: newWorker.id_card_type,
+            id_card_front: newWorker.id_card_front,
+            id_card_back: newWorker.id_card_back,
+            status: newWorker.status,
+            rating: newWorker.rating,
+            completed_jobs: newWorker.completed_jobs,
+            is_online: newWorker.is_online,
+            is_available: newWorker.is_available,
+            verified_worker: newWorker.verified_worker,
+            premium_service: newWorker.premium_service,
+            join_date: newWorker.join_date
           };
         });
         
