@@ -5,9 +5,6 @@ interface WorkerCardProps {
   worker: Worker;
   onViewProfile: (worker: Worker) => void;
 }
-
-
-
 const WorkerCard: React.FC<WorkerCardProps> = ({ worker, onViewProfile }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
@@ -32,7 +29,7 @@ const WorkerCard: React.FC<WorkerCardProps> = ({ worker, onViewProfile }) => {
               <h3 className="text-lg font-semibold text-gray-900 truncate">
                 {worker.first_name} {worker.last_name}
               </h3>
-              <p className="text-sm text-gray-600 mt-1">{worker.primary_profession}</p>
+              <p className="text-sm text-gray-600 mt-1">d</p>
             </div>
             
             {/* Status Badge */}

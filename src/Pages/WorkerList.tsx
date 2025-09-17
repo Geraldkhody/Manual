@@ -118,58 +118,26 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
   ];
 
   useEffect(() => {
-    // Load workers from API
-    const loadWorkers = async () => {
-      setIsLoading(true);
-      setApiError(null);
-      setUsingFallback(false);
-      
-      try {
-        console.log('Fetching workers from API:', `${apiClient.defaults.baseURL}${endpoints.workers}`);
-        const response = await apiClient.get(endpoints.workers);
-        console.log('Workers API response:', response.data);
-        console.log('Workers data:', response.data.results);
-        
-        // Transform API data to match our interface if needed
-        const workersData = response.data.results || response.data.data || response.data || [];
-        
-        if (Array.isArray(workersData)) {
-          setWorkers(workersData);
-          console.log(`✅ Loaded ${workersData.length} workers from API`);
-        } else {
-          throw new Error('Invalid API response format');
-        }
-      } catch (error) {
-        console.error('❌ Failed to load workers from API:', error);
-        
-        // Set error message for user feedback
-        if (error instanceof Error) {
-          setApiError(`API Error: ${error.message}`);
-        } else {
-          setApiError('Failed to connect to the server');
-        }
-        
-        // Fallback to mock data
-        console.log('🔄 Using fallback mock data...');
-        setWorkers(mockWorkers);
-        setUsingFallback(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadWorkers();
   }, []);
 
   console.log('Workers data:', workers);
+  console.log('Workers data type:', typeof workers);
+  console.log('Is workers array?', Array.isArray(workers));
+  if (workers.length > 0) {
+    console.log('First worker:', workers[0]);
+    console.log('First worker type:', typeof workers[0]);
+  }
 
   const filteredWorkers = workers.filter(worker => {
-    const fullName = `${worker.first_name} ${worker.last_name}`;
-    const matchesSearch = fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         worker.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         worker.primary_profession.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (worker.secondary_profession && worker.secondary_profession.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         worker.phone.toLowerCase().includes(searchTerm.toLowerCase());
+    const fullName = `${worker.first_name || ''} ${worker.last_name || ''}`.trim();
+    const searchLower = searchTerm.toLowerCase();
+    
+    const matchesSearch = fullName.toLowerCase().includes(searchLower) ||
+                         (worker.email && worker.email.toLowerCase().includes(searchLower)) ||
+                         (worker.primary_profession && worker.primary_profession.toLowerCase().includes(searchLower)) ||
+                         (worker.secondary_profession && worker.secondary_profession.toLowerCase().includes(searchLower)) ||
+                         (worker.phone && worker.phone.toLowerCase().includes(searchLower));
     
     const matchesFilter = filterStatus === 'all' || 
                          worker.status === filterStatus ||
@@ -208,42 +176,76 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
     console.log('✅ New worker added:', newWorker);
   };
 
-  const refreshWorkers = () => {
-    // Trigger useEffect to reload workers
+  const loadWorkers = async () => {
     setIsLoading(true);
     setApiError(null);
     setUsingFallback(false);
     
-    const loadWorkers = async () => {
-      try {
-        console.log('Refreshing workers from API...');
-        const response = await apiClient.get(endpoints.workers);
-        console.log('Workers API response:', response.data);
+    try {
+      console.log('Fetching workers from API:', `${apiClient.defaults.baseURL}${endpoints.workers}`);
+      const response = await apiClient.get(endpoints.workers);
+      console.log('Workers API response:', response.data);
+      console.log('Workers data:', response.data.results);
+      
+      // Transform API data to match our interface if needed
+      const workersData = response.data.results || response.data.data || response.data || [];
+      
+      if (Array.isArray(workersData)) {
+        // Validate and transform each worker object to ensure it has required fields
+        const validatedWorkers = workersData.map((worker: any) => {
+          // Ensure all required fields exist with fallback values
+          return {
+            id: worker.id || `worker-${Date.now()}-${Math.random()}`,
+            profile_photo: worker.profile_photo || 'https://ui-avatars.com/api/?name=Worker&background=3B82F6&color=fff',
+            first_name: worker.first_name || worker.name || 'Unknown',
+            last_name: worker.last_name || '',
+            email: worker.email || '',
+            phone: worker.phone || '',
+            residential_address: worker.residential_address || null,
+            digital_address: worker.digital_address || null,
+            bio: worker.bio || '',
+            primary_profession: worker.primary_profession || worker.profession || 'Worker',
+            secondary_profession: worker.secondary_profession || null,
+            business_certificate: worker.business_certificate || null,
+            id_card_type: worker.id_card_type || 'ID Card',
+            id_card_front: worker.id_card_front || null,
+            id_card_back: worker.id_card_back || null,
+            status: worker.status || 'active',
+            rating: typeof worker.rating === 'number' ? worker.rating : 0,
+            completed_jobs: typeof worker.completed_jobs === 'number' ? worker.completed_jobs : 0,
+            is_online: Boolean(worker.is_online),
+            is_available: Boolean(worker.is_available),
+            verified_worker: Boolean(worker.verified_worker),
+            premium_service: Boolean(worker.premium_service),
+            join_date: worker.join_date || worker.created_at || new Date().toISOString().split('T')[0]
+          };
+        });
         
-        const workersData = response.data.results || response.data.data || response.data || [];
-        
-        if (Array.isArray(workersData)) {
-          setWorkers(workersData);
-          console.log(`✅ Refreshed ${workersData.length} workers from API`);
-        } else {
-          throw new Error('Invalid API response format');
-        }
-      } catch (error) {
-        console.error('❌ Failed to refresh workers from API:', error);
-        
-        if (error instanceof Error) {
-          setApiError(`API Error: ${error.message}`);
-        } else {
-          setApiError('Failed to connect to the server');
-        }
-        
-        setWorkers(mockWorkers);
-        setUsingFallback(true);
-      } finally {
-        setIsLoading(false);
+        setWorkers(validatedWorkers);
+        console.log(`✅ Loaded ${validatedWorkers.length} workers from API`);
+      } else {
+        throw new Error('Invalid API response format');
       }
-    };
+    } catch (error) {
+      console.error('❌ Failed to load workers from API:', error);
+      
+      // Set error message for user feedback
+      if (error instanceof Error) {
+        setApiError(`API Error: ${error.message}`);
+      } else {
+        setApiError('Failed to connect to the server');
+      }
+      
+      // Fallback to mock data
+      console.log('🔄 Using fallback mock data...');
+      setWorkers(mockWorkers);
+      setUsingFallback(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  const refreshWorkers = () => {
     loadWorkers();
   };
 
@@ -314,56 +316,84 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
 
         {/* Workers Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredWorkers.map((worker) => (
-            <WorkerCard 
-              key={worker.id}
-              worker={worker}
-              onViewProfile={openWorkerModal}
-            />
-          ))}
+          {filteredWorkers.map((worker) => {
+            // Safety check to ensure worker is a valid object
+            if (!worker || typeof worker !== 'object') {
+              console.error('Invalid worker object:', worker);
+              return null;
+            }
+            
+            return (
+              <WorkerCard 
+                key={worker.id}
+                worker={worker}
+                onViewProfile={openWorkerModal}
+              />
+            );
+          })}
         </div>
 
         {/* No Results */}
-        {filteredWorkers.length === 0 && (
+        {filteredWorkers.length === 0 && !isLoading && (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No workers found</h3>
-            <p className="mt-1 text-sm text-gray-500">Try adjusting your search or filter criteria.</p>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              {workers.length === 0 ? 'No workers available' : 'No workers found'}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {workers.length === 0 
+                ? 'There are no workers in the system yet.' 
+                : 'Try adjusting your search or filter criteria.'
+              }
+            </p>
+            {workers.length === 0 && (
+              <button
+                onClick={openAddWorkerModal}
+                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add First Worker
+              </button>
+            )}
           </div>
         )}
 
         {/* Summary Stats */}
-        <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Worker Statistics</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{workers.length}</div>
-              <div className="text-sm text-gray-600">Total Workers</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{workers.filter(w => w.status === 'active').length}</div>
-              <div className="text-sm text-gray-600">Active</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-emerald-600">{workers.filter(w => w.is_online).length}</div>
-              <div className="text-sm text-gray-600">Online</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{workers.filter(w => w.verified_worker).length}</div>
-              <div className="text-sm text-gray-600">Verified</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{workers.filter(w => w.premium_service).length}</div>
-              <div className="text-sm text-gray-600">Premium</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">{workers.filter(w => w.is_available).length}</div>
-              <div className="text-sm text-gray-600">Available</div>
+        {workers.length > 0 && (
+          <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Worker Statistics</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{workers.length}</div>
+                <div className="text-sm text-gray-600">Total Workers</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{workers.filter(w => w.status === 'active').length}</div>
+                <div className="text-sm text-gray-600">Active</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-600">{workers.filter(w => w.is_online).length}</div>
+                <div className="text-sm text-gray-600">Online</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{workers.filter(w => w.verified_worker).length}</div>
+                <div className="text-sm text-gray-600">Verified</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{workers.filter(w => w.premium_service).length}</div>
+                <div className="text-sm text-gray-600">Premium</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-600">{workers.filter(w => w.is_available).length}</div>
+                <div className="text-sm text-gray-600">Available</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Worker Profile Modal */}
