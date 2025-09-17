@@ -17,7 +17,9 @@ function App() {
   const handleLogout = () => {
     // Clear stored authentication data
     localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('userData');
+    localStorage.removeItem('workerData');
     setIsAuthenticated(false);
   };
 
