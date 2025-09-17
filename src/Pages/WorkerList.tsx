@@ -185,10 +185,10 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
       console.log('Fetching workers from API:', `${apiClient.defaults.baseURL}${endpoints.workers}`);
       const response = await apiClient.get(endpoints.workers);
       console.log('Workers API response:', response.data);
-      console.log('Workers data:', response.data.results);
       
       // Transform API data to match our interface if needed
       const workersData = response.data.results || response.data.data || response.data || [];
+      console.log('Workers data:', workersData[0].user.first_name);
       
       if (Array.isArray(workersData)) {
         // Validate and transform each worker object to ensure it has required fields
@@ -212,32 +212,34 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
               secondaryProfession = worker.secondary_profession.name;
             }
           }
+
+          const newWorker = worker.user;
           
           // Ensure all required fields exist with fallback values
           return {
-            id: worker.id || `worker-${Date.now()}-${Math.random()}`,
-            profile_photo: worker.profile_photo || 'https://ui-avatars.com/api/?name=Worker&background=3B82F6&color=fff',
-            first_name: worker.first_name || worker.name || 'Unknown',
-            last_name: worker.last_name || '',
-            email: worker.email || '',
-            phone: worker.phone || '',
-            residential_address: worker.residential_address || null,
-            digital_address: worker.digital_address || null,
-            bio: worker.bio || '',
+            id: newWorker.id || `worker-${Date.now()}-${Math.random()}`,
+            profile_photo: newWorker.profile_photo || 'https://ui-avatars.com/api/?name=Worker&background=3B82F6&color=fff',
+            first_name: newWorker.first_name || newWorker.name || 'Unknown',
+            last_name: newWorker.last_name || '',
+            email: newWorker.email || '',
+            phone: newWorker.phone || '',
+            residential_address: newWorker.residential_address || null,
+            digital_address: newWorker.digital_address || null,
+            bio: newWorker.bio || '',
             primary_profession: primaryProfession,
             secondary_profession: secondaryProfession,
-            business_certificate: worker.business_certificate || null,
-            id_card_type: worker.id_card_type || 'ID Card',
-            id_card_front: worker.id_card_front || null,
-            id_card_back: worker.id_card_back || null,
-            status: worker.status || 'active',
-            rating: typeof worker.rating === 'number' ? worker.rating : 0,
-            completed_jobs: typeof worker.completed_jobs === 'number' ? worker.completed_jobs : 0,
-            is_online: Boolean(worker.is_online),
-            is_available: Boolean(worker.is_available),
-            verified_worker: Boolean(worker.verified_worker),
-            premium_service: Boolean(worker.premium_service),
-            join_date: worker.join_date || worker.created_at || new Date().toISOString().split('T')[0]
+            business_certificate: newWorker.business_certificate || null,
+            id_card_type: newWorker.id_card_type || 'ID Card',
+            id_card_front: newWorker.id_card_front || null,
+            id_card_back: newWorker.id_card_back || null,
+            status: newWorker.status || 'active',
+            rating: typeof newWorker.rating === 'number' ? newWorker.rating : 0,
+            completed_jobs: typeof newWorker.completed_jobs === 'number' ? newWorker.completed_jobs : 0,
+            is_online: Boolean(newWorker.is_online),
+            is_available: Boolean(newWorker.is_available),
+            verified_newWorker: Boolean(newWorker.verified_newWorker),
+            premium_service: Boolean(newWorker.premium_service),
+            join_date: newWorker.join_date || newWorker.created_at || new Date().toISOString().split('T')[0]
           };
         });
         
