@@ -19,7 +19,7 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
     digital_address: '',
     street_address: '',
     gender: '',
-    professional_categories: [] as string[],
+    professional_categories: '',
     photo: null as File | null,
     business_certificate: null as File | null,
     id_card_front: null as File | null,
@@ -106,7 +106,7 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
     const { name, value } = e.target;
     
     // Filter phone number to only allow digits
-    if (name === 'phone_number') {
+    if (name === 'phone_nuss') {
       const digitsOnly = value.replace(/\D/g, '');
       setFormData(prev => ({ ...prev, [name]: digitsOnly }));
     } else {
@@ -193,11 +193,6 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
     if (!formData.photo) newErrors.photo = 'Photo is required';
     if (!formData.business_certificate) newErrors.business_certificate = 'Business certificate is required';
 
-    // Phone validation - exactly 10 digits
-    const phoneRegex = /^\d{10}$/;
-    if (formData.phone_number && !phoneRegex.test(formData.phone_number.replace(/\D/g, ''))) {
-      newErrors.phone_number = 'Phone number must be exactly 10 digits';
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -379,7 +374,7 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
                     name="phone_number"
                     value={formData.phone_number}
                     onChange={handleInputChange}
-                    maxLength={10}
+                    // maxLength={10}
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       errors.phone_number ? 'border-red-500' : 'border-gray-300'
                     }`}
@@ -431,29 +426,30 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
                   {errors.identification_card && <p className="mt-1 text-sm text-red-600">{errors.identification_card}</p>}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Professional Categories <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="professional_categories"
-                    multiple
-                    value={formData.professional_categories}
-                    onChange={handleMultiSelectChange}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.professional_categories ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    size={3}
-                  >
-                    {professions.map(profession => (
-                      <option key={profession.id} value={profession.name}>
-                        {profession.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-xs text-gray-500">Hold Ctrl/Cmd to select multiple categories</p>
-                  {errors.professional_categories && <p className="mt-1 text-sm text-red-600">{errors.professional_categories}</p>}
-                </div>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                     Professional Category <span className="text-red-500">*</span>
+                   </label>
+                   <select
+                     name="professional_categories"
+                     value={formData.professional_categories}
+                     onChange={handleInputChange}
+                     disabled={loadingProfessions}
+                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                       errors.professional_categories ? 'border-red-500' : 'border-gray-300'
+                     } ${loadingProfessions ? 'opacity-50 cursor-not-allowed' : ''}`}
+                   >
+                     <option value="">
+                       {loadingProfessions ? 'Loading categories...' : 'Select category'}
+                     </option>
+                     {professions.map(profession => (
+                       <option key={profession.id} value={profession.id}>
+                         {profession.name}
+                       </option>
+                     ))}
+                   </select>
+                   {errors.professional_categories && <p className="mt-1 text-sm text-red-600">{errors.professional_categories}</p>}
+                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
