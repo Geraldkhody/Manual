@@ -133,7 +133,7 @@ const WorkerList: React.FC<WorkerListProps> = ({ onLogout }) => {
 
   const handleLogout = () => {
     onLogout();
-    navigate('/');
+    navigate('/login');
   };
 
   if (isLoading) {

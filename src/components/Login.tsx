@@ -1,25 +1,27 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { apiClient, endpoints } from '../utils/api';
 
 interface LoginProps {
-  onLogin: (email: string, password: string) => void;
+  onLogin: (phone: string, password: string) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ phone?: string; password?: string; api?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
+    const newErrors: { phone?: string; password?: string } = {};
     
-    if (!email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Please enter a valid email address';
+    if (!phone) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!/^\+?[\d\s\-\(\)]{10,}$/.test(phone.replace(/\s/g, ''))) {
+      newErrors.phone = 'Please enter a valid phone number';
     }
     
     if (!password) {
@@ -38,18 +40,70 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     if (!validateForm()) return;
     
     setIsLoading(true);
+    setErrors(prev => ({ ...prev, api: undefined })); // Clear previous API errors
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      onLogin(email, password);
-      navigate('/workers');
+      // Log the request for debugging
+      console.log('Login request:', {
+        url: endpoints.login,
+        payload: { phone, password }
+      });
+
+      const response = await apiClient.post(endpoints.login, {
+        phone: phone,
+        password: password
+      });
+
+      console.log('Login response:', response.data);
+
+      // Handle successful login
+      if (response.data && response.status === 200) {
+        // Store token if provided
+        if (response.data.access_token || response.data.token) {
+          localStorage.setItem('authToken', response.data.access_token || response.data.token);
+        }
+        
+        // Store user data if provided
+        if (response.data.user) {
+          localStorage.setItem('userData', JSON.stringify(response.data.user));
+        }
+
+        onLogin(phone, password);
+        navigate('/');
+      }
     } catch (error) {
       console.error('Login failed:', error);
+      
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          // Server responded with error status
+          const status = error.response.status;
+          const message = error.response.data?.message || error.response.data?.error || 'Login failed';
+          
+          if (status === 401) {
+            setErrors(prev => ({ ...prev, api: 'Invalid phone number or password' }));
+          } else if (status === 404) {
+            setErrors(prev => ({ ...prev, api: 'User not found' }));
+          } else if (status >= 500) {
+            setErrors(prev => ({ ...prev, api: 'Server error. Please try again later.' }));
+          } else {
+            setErrors(prev => ({ ...prev, api: message }));
+          }
+        } else if (error.request) {
+          // Network error
+          setErrors(prev => ({ ...prev, api: 'Network error. Please check your connection.' }));
+        } else {
+          setErrors(prev => ({ ...prev, api: 'An unexpected error occurred.' }));
+        }
+      } else {
+        setErrors(prev => ({ ...prev, api: 'An unexpected error occurred.' }));
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
@@ -67,33 +121,44 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
         {/* Login Form */}
         <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email address
-              </label>
-              <div className="relative">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`appearance-none relative block w-full px-4 py-3 border ${
-                    errors.email ? 'border-red-300' : 'border-gray-300'
-                  } placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`}
-                  placeholder="Enter your email"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              </div>
-              {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-            </div>
+           <form className="space-y-6" onSubmit={handleSubmit}>
+             {/* API Error Message */}
+             {errors.api && (
+               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                 <div className="flex items-center">
+                   <svg className="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                   </svg>
+                   <p className="text-sm text-red-700">{errors.api}</p>
+                 </div>
+               </div>
+             )}
+             {/* Phone Field */}
+             <div>
+               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                 Phone Number
+               </label>
+               <div className="relative">
+                 <input
+                   id="phone"
+                   name="phone"
+                   type="tel"
+                   autoComplete="tel"
+                   value={phone}
+                   onChange={(e) => setPhone(e.target.value)}
+                   className={`appearance-none relative block w-full px-4 py-3 border ${
+                     errors.phone ? 'border-red-300' : 'border-gray-300'
+                   } placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`}
+                   placeholder="Enter your phone number"
+                 />
+                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                   <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21L6.4 11.392a11.097 11.097 0 006.208 6.208l2.005-3.824a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                   </svg>
+                 </div>
+               </div>
+               {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+             </div>
 
             {/* Password Field */}
             <div>
@@ -133,26 +198,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
             </div>
 
-            {/* Remember me and Forgot password */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                  Forgot your password?
-                </a>
-              </div>
-            </div>
+            
 
             {/* Submit Button */}
             <div>
@@ -172,27 +218,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 ) : (
                   'Sign in'
                 )}
-              </button>
+                  </button>
             </div>
           </form>
 
-          {/* Demo credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Demo Credentials:</h3>
-            <p className="text-xs text-gray-600">Email: admin@example.com</p>
-            <p className="text-xs text-gray-600">Password: password123</p>
-          </div>
+           {/* Demo credentials */}
+       
         </div>
 
         {/* Footer */}
-        <div className="text-center">
-          <p className="text-sm text-gray-600">
-            Don't have an account?{' '}
-            <a href="#" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-              Sign up for free
-            </a>
-          </p>
-        </div>
+        
       </div>
     </div>
   );

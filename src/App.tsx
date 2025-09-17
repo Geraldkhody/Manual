@@ -6,14 +6,18 @@ import WorkerList from './components/WorkerList';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const handleLogin = (email: string, password: string) => {
-    // Simple authentication logic - in a real app, this would validate against a backend
-    if (email && password) {
+  const handleLogin = (phone: string, password: string) => {
+    // Authentication is handled by the Login component with the real API
+    // This function is called after successful API authentication
+    if (phone && password) {
       setIsAuthenticated(true);
     }
   };
 
   const handleLogout = () => {
+    // Clear stored authentication data
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userData');
     setIsAuthenticated(false);
   };
 
@@ -25,23 +29,23 @@ function App() {
             path="/" 
             element={
               isAuthenticated ? (
-                <Navigate to="/workers" replace />
+                <WorkerList onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            } 
+          />
+          <Route 
+            path="/login" 
+            element={
+              isAuthenticated ? (
+                <Navigate to="/" replace />
               ) : (
                 <Login onLogin={handleLogin} />
               )
             } 
           />
-          <Route 
-            path="/workers" 
-            element={
-              isAuthenticated ? (
-                <WorkerList onLogout={handleLogout} />
-              ) : (
-                <Navigate to="/" replace />
-              )
-            } 
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
         </Routes>
       </div>
     </Router>
