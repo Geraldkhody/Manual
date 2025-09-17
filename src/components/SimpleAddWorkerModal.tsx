@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Worker } from '../types/worker';
 import { apiClient, endpoints } from '../utils/api';
+import { compressImage, validateBusinessCertificate, validateImageFile, formatFileSize } from '../utils/fileUtils';
 
 interface SimpleAddWorkerModalProps {
   isOpen: boolean;
@@ -18,29 +19,45 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
     digital_address: '',
     street_address: '',
     gender: '',
-    professional_categories: '',
-    photo: '',
-    business_certificate: '',
-    id_card_front: '',
-    id_card_back: '',
+    professional_categories: [] as string[],
+    photo: null as File | null,
+    business_certificate: null as File | null,
+    id_card_front: null as File | null,
+    id_card_back: null as File | null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Common professions for dropdown
-  const professions = [
-    'Software Engineer', 'Graphic Designer', 'Electrician', 'Plumber', 'Carpenter',
-    'Teacher', 'Nurse', 'Doctor', 'Lawyer', 'Accountant', 'Marketing Specialist',
-    'Web Developer', 'Data Analyst', 'Project Manager', 'Sales Representative',
-    'Chef', 'Mechanic', 'Tailor', 'Hairdresser', 'Photographer', 'Babysitter / Nanny', 'Other'
-  ];
+  const [professions, setProfessions] = useState<Array<{id: string, name: string}>>([]);
+  const [loadingProfessions, setLoadingProfessions] = useState(false);
+  const [fileUploads, setFileUploads] = useState<Record<string, {file: File, compressed: boolean, size: number}>>({});
 
   // Gender options
   const genderOptions = ['Male', 'Female', 'Other'];
 
   // ID card types
   const idCardTypes = ['Ghana Card', 'Passport', 'Driver\'s License', 'Voter ID'];
+
+  // Load professions from API
+  useEffect(() => {
+    const loadProfessions = async () => {
+      setLoadingProfessions(true);
+      try {
+        const response = await apiClient.get(endpoints.professions);
+        setProfessions(response.data.data || []);
+      } catch (error) {
+        console.error('Failed to load professions:', error);
+        // Fallback to empty array if API fails
+        setProfessions([]);
+      } finally {
+        setLoadingProfessions(false);
+      }
+    };
+
+    if (isOpen) {
+      loadProfessions();
+    }
+  }, [isOpen]);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -54,14 +71,15 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
         digital_address: '',
         street_address: '',
         gender: '',
-        professional_categories: '',
-        photo: '',
-        business_certificate: '',
-        id_card_front: '',
-        id_card_back: '',
+        professional_categories: [],
+        photo: null,
+        business_certificate: null,
+        id_card_front: null,
+        id_card_back: null,
       });
       setErrors({});
       setIsSubmitting(false);
+      setFileUploads({});
     }
   }, [isOpen]);
 
@@ -86,7 +104,14 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Filter phone number to only allow digits
+    if (name === 'phone_number') {
+      const digitsOnly = value.replace(/\D/g, '');
+      setFormData(prev => ({ ...prev, [name]: digitsOnly }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
     
     // Clear error when user starts typing
     if (errors[name]) {
@@ -94,20 +119,84 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
     }
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    let isValid = false;
+    if (fieldName === 'business_certificate') {
+      isValid = validateBusinessCertificate(file);
+    } else {
+      isValid = validateImageFile(file);
+    }
+
+    if (!isValid) {
+      setErrors(prev => ({ 
+        ...prev, 
+        [fieldName]: fieldName === 'business_certificate' 
+          ? 'Please select a valid PDF, DOC, or image file'
+          : 'Please select a valid image file'
+      }));
+      return;
+    }
+
+    // Clear previous error
+    setErrors(prev => ({ ...prev, [fieldName]: '' }));
+
+    try {
+      let processedFile = file;
+      let compressed = false;
+
+      // Compress images (not business certificate if it's a document)
+      if (fieldName !== 'business_certificate' || file.type.startsWith('image/')) {
+        const compressedResult = await compressImage(file, 500);
+        processedFile = compressedResult.compressedFile;
+        compressed = true;
+        
+        console.log(`File compressed: ${compressedResult.originalSize.toFixed(1)}KB → ${compressedResult.compressedSize.toFixed(1)}KB (${compressedResult.compressionRatio.toFixed(1)}% reduction)`);
+      }
+
+      setFormData(prev => ({ ...prev, [fieldName]: processedFile }));
+      setFileUploads(prev => ({
+        ...prev,
+        [fieldName]: {
+          file: processedFile,
+          compressed,
+          size: processedFile.size / 1024
+        }
+      }));
+    } catch (error) {
+      console.error('File processing error:', error);
+      setErrors(prev => ({ ...prev, [fieldName]: 'Failed to process file' }));
+    }
+  };
+
+  const handleMultiSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+    setFormData(prev => ({ ...prev, professional_categories: selectedOptions }));
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    // Required fields
     if (!formData.first_name.trim()) newErrors.first_name = 'First name is required';
     if (!formData.last_name.trim()) newErrors.last_name = 'Last name is required';
     if (!formData.phone_number.trim()) newErrors.phone_number = 'Phone number is required';
     if (!formData.identification_card.trim()) newErrors.identification_card = 'Identification card is required';
     if (!formData.primary_profession.trim()) newErrors.primary_profession = 'Primary profession is required';
     if (!formData.gender.trim()) newErrors.gender = 'Gender is required';
+    if (!formData.digital_address.trim()) newErrors.digital_address = 'Digital address is required';
+    if (!formData.street_address.trim()) newErrors.street_address = 'Street address is required';
+    if (formData.professional_categories.length === 0) newErrors.professional_categories = 'At least one professional category is required';
+    if (!formData.photo) newErrors.photo = 'Photo is required';
+    if (!formData.business_certificate) newErrors.business_certificate = 'Business certificate is required';
 
-    // Phone validation
-    const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
-    if (formData.phone_number && !phoneRegex.test(formData.phone_number.replace(/\s/g, ''))) {
-      newErrors.phone_number = 'Please enter a valid phone number';
+    // Phone validation - exactly 10 digits
+    const phoneRegex = /^\d{10}$/;
+    if (formData.phone_number && !phoneRegex.test(formData.phone_number.replace(/\D/g, ''))) {
+      newErrors.phone_number = 'Phone number must be exactly 10 digits';
     }
 
     setErrors(newErrors);
@@ -122,26 +211,51 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
     setIsSubmitting(true);
 
     try {
-      // Prepare API payload with correct field names
-      const apiPayload = {
-        first_name: formData.first_name.trim(),
-        last_name: formData.last_name.trim(),
-        phone_number: formData.phone_number.trim(),
-        identification_card: formData.identification_card.trim(),
-        primary_profession: formData.primary_profession.trim(),
-        digital_address: formData.digital_address.trim() || null,
-        street_address: formData.street_address.trim() || null,
-        gender: formData.gender.trim(),
-        professional_categories: formData.professional_categories.trim() || null,
-        photo: formData.photo.trim() || null,
-        business_certificate: formData.business_certificate.trim() || null,
-        id_card_front: formData.id_card_front.trim() || null,
-        id_card_back: formData.id_card_back.trim() || null,
-      };
+      // Prepare FormData for file uploads
+      const formDataPayload = new FormData();
+      
+      // Add text fields
+      formDataPayload.append('first_name', formData.first_name.trim());
+      formDataPayload.append('last_name', formData.last_name.trim());
+      formDataPayload.append('phone_number', formData.phone_number.trim());
+      formDataPayload.append('identification_card', formData.identification_card.trim());
+      formDataPayload.append('primary_profession', formData.primary_profession.trim());
+      formDataPayload.append('gender', formData.gender.trim());
+      
+      // Add optional text fields
+      if (formData.digital_address.trim()) {
+        formDataPayload.append('digital_address', formData.digital_address.trim());
+      }
+      if (formData.street_address.trim()) {
+        formDataPayload.append('street_address', formData.street_address.trim());
+      }
+      
+      // Add professional categories as JSON string
+      if (formData.professional_categories.length > 0) {
+        formDataPayload.append('professional_categories', JSON.stringify(formData.professional_categories));
+      }
+      
+      // Add files
+      if (formData.photo) {
+        formDataPayload.append('photo', formData.photo);
+      }
+      if (formData.business_certificate) {
+        formDataPayload.append('business_certificate', formData.business_certificate);
+      }
+      if (formData.id_card_front) {
+        formDataPayload.append('id_card_front', formData.id_card_front);
+      }
+      if (formData.id_card_back) {
+        formDataPayload.append('id_card_back', formData.id_card_back);
+      }
 
       try {
-        // Submit to API
-        const response = await apiClient.post(endpoints.createWorker, apiPayload);
+        // Submit to API with FormData
+        const response = await apiClient.post(endpoints.createWorker, formDataPayload, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
         console.log('✅ Worker created successfully:', response.data);
         
         // Transform API response to Worker format for local state
@@ -265,11 +379,13 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
                     name="phone_number"
                     value={formData.phone_number}
                     onChange={handleInputChange}
+                    maxLength={10}
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       errors.phone_number ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="+233 24 123 4567"
+                    placeholder="0241234567"
                   />
+                  <p className="mt-1 text-xs text-gray-500">Enter exactly 10 digits (e.g., 0241234567)</p>
                   {errors.phone_number && <p className="mt-1 text-sm text-red-600">{errors.phone_number}</p>}
                 </div>
 
@@ -317,46 +433,62 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Professional Categories
+                    Professional Categories <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="professional_categories"
+                    multiple
                     value={formData.professional_categories}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., Healthcare, Technology, Construction"
-                  />
+                    onChange={handleMultiSelectChange}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.professional_categories ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    size={3}
+                  >
+                    {professions.map(profession => (
+                      <option key={profession.id} value={profession.name}>
+                        {profession.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">Hold Ctrl/Cmd to select multiple categories</p>
+                  {errors.professional_categories && <p className="mt-1 text-sm text-red-600">{errors.professional_categories}</p>}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Digital Address
+                    Digital Address <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="digital_address"
                     value={formData.digital_address}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.digital_address ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     placeholder="e.g., GA-123-4567"
                   />
+                  {errors.digital_address && <p className="mt-1 text-sm text-red-600">{errors.digital_address}</p>}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Street Address
+                    Street Address <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="street_address"
                     value={formData.street_address}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.street_address ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     placeholder="e.g., 123 Main Street, Accra"
                   />
+                  {errors.street_address && <p className="mt-1 text-sm text-red-600">{errors.street_address}</p>}
                 </div>
               </div>
 
@@ -368,13 +500,18 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
                   name="primary_profession"
                   value={formData.primary_profession}
                   onChange={handleInputChange}
+                  disabled={loadingProfessions}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.primary_profession ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  } ${loadingProfessions ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <option value="">Select profession</option>
+                  <option value="">
+                    {loadingProfessions ? 'Loading professions...' : 'Select profession'}
+                  </option>
                   {professions.map(profession => (
-                    <option key={profession} value={profession}>{profession}</option>
+                    <option key={profession.id} value={profession.id}>
+                      {profession.name}
+                    </option>
                   ))}
                 </select>
                 {errors.primary_profession && <p className="mt-1 text-sm text-red-600">{errors.primary_profession}</p>}
@@ -383,60 +520,88 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Photo URL
+                    Photo <span className="text-red-500">*</span> <span className="text-xs text-gray-500">(Image, max 500KB)</span>
                   </label>
                   <input
-                    type="url"
-                    name="photo"
-                    value={formData.photo}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://example.com/photo.jpg"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e, 'photo')}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.photo ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {fileUploads.photo && (
+                    <div className="mt-1 text-xs text-gray-600">
+                      {fileUploads.photo.file.name} ({formatFileSize(fileUploads.photo.size)})
+                      {fileUploads.photo.compressed && <span className="text-green-600 ml-1">✓ Compressed</span>}
+                    </div>
+                  )}
+                  {errors.photo && <p className="mt-1 text-sm text-red-600">{errors.photo}</p>}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Business Certificate URL
+                    Business Certificate <span className="text-red-500">*</span> <span className="text-xs text-gray-500">(PDF, DOC, or Image, max 500KB)</span>
                   </label>
                   <input
-                    type="url"
-                    name="business_certificate"
-                    value={formData.business_certificate}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://example.com/certificate.pdf"
+                    type="file"
+                    accept=".pdf,.doc,.docx,image/*"
+                    onChange={(e) => handleFileChange(e, 'business_certificate')}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.business_certificate ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {fileUploads.business_certificate && (
+                    <div className="mt-1 text-xs text-gray-600">
+                      {fileUploads.business_certificate.file.name} ({formatFileSize(fileUploads.business_certificate.size)})
+                      {fileUploads.business_certificate.compressed && <span className="text-green-600 ml-1">✓ Compressed</span>}
+                    </div>
+                  )}
+                  {errors.business_certificate && <p className="mt-1 text-sm text-red-600">{errors.business_certificate}</p>}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ID Card Front URL
+                    ID Card Front <span className="text-xs text-gray-500">(Image, max 500KB)</span>
                   </label>
                   <input
-                    type="url"
-                    name="id_card_front"
-                    value={formData.id_card_front}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://example.com/id-front.jpg"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e, 'id_card_front')}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.id_card_front ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {fileUploads.id_card_front && (
+                    <div className="mt-1 text-xs text-gray-600">
+                      {fileUploads.id_card_front.file.name} ({formatFileSize(fileUploads.id_card_front.size)})
+                      {fileUploads.id_card_front.compressed && <span className="text-green-600 ml-1">✓ Compressed</span>}
+                    </div>
+                  )}
+                  {errors.id_card_front && <p className="mt-1 text-sm text-red-600">{errors.id_card_front}</p>}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ID Card Back URL
+                    ID Card Back <span className="text-xs text-gray-500">(Image, max 500KB)</span>
                   </label>
                   <input
-                    type="url"
-                    name="id_card_back"
-                    value={formData.id_card_back}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://example.com/id-back.jpg"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e, 'id_card_back')}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.id_card_back ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {fileUploads.id_card_back && (
+                    <div className="mt-1 text-xs text-gray-600">
+                      {fileUploads.id_card_back.file.name} ({formatFileSize(fileUploads.id_card_back.size)})
+                      {fileUploads.id_card_back.compressed && <span className="text-green-600 ml-1">✓ Compressed</span>}
+                    </div>
+                  )}
+                  {errors.id_card_back && <p className="mt-1 text-sm text-red-600">{errors.id_card_back}</p>}
                 </div>
               </div>
 

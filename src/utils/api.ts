@@ -50,9 +50,10 @@ apiClient.interceptors.response.use(
 
 // API endpoints
 export const endpoints = {
-  login: '/accounts/login/?phone=phone',
+  login: '/accounts/login/',
   workers: '/webapp/worker-profile/staff-access',
   createWorker: '/webapp/worker-profile/staff-access',
+  professions: '/accounts/professions/',
 } as const;
 
 export default apiClient;
