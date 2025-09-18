@@ -19,7 +19,7 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
     digital_address: '',
     street_address: '',
     gender: '',
-    professional_categories: '',
+    profesion_categories: '',
     photo: null as File | null,
     business_certificate: null as File | null,
     id_card_front: null as File | null,
@@ -36,7 +36,16 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
   const genderOptions = ['Male', 'Female', 'Other'];
 
   // ID card types
-  const idCardTypes = ['Ghana Card', 'Passport', 'Driver\'s License', 'Voter ID'];
+  const idCardTypes = [
+    {
+      name: 'Ghana Card',
+      value: 'ghana_card'
+    },
+    {
+      name: 'Passport',
+      value: 'passport'
+    }
+  ];
 
   // Load professions from API
   useEffect(() => {
@@ -71,7 +80,7 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
         digital_address: '',
         street_address: '',
         gender: '',
-        professional_categories: [],
+        profesion_categories: '',
         photo: null,
         business_certificate: null,
         id_card_front: null,
@@ -105,8 +114,8 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    // Filter phone number to only allow digits
-    if (name === 'phone_nuss') {
+      // Filter phone number to only allow digits
+      if (name === 'phone_nr') {
       const digitsOnly = value.replace(/\D/g, '');
       setFormData(prev => ({ ...prev, [name]: digitsOnly }));
     } else {
@@ -172,10 +181,6 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
     }
   };
 
-  const handleMultiSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-    setFormData(prev => ({ ...prev, professional_categories: selectedOptions }));
-  };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -189,7 +194,7 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
     if (!formData.gender.trim()) newErrors.gender = 'Gender is required';
     if (!formData.digital_address.trim()) newErrors.digital_address = 'Digital address is required';
     if (!formData.street_address.trim()) newErrors.street_address = 'Street address is required';
-    if (formData.professional_categories.length === 0) newErrors.professional_categories = 'At least one professional category is required';
+    if (!formData.profesion_categories.trim()) newErrors.profesion_categories = 'Professional category is required';
     if (!formData.photo) newErrors.photo = 'Photo is required';
     if (!formData.business_certificate) newErrors.business_certificate = 'Business certificate is required';
 
@@ -225,9 +230,9 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
         formDataPayload.append('street_address', formData.street_address.trim());
       }
       
-      // Add professional categories as JSON string
-      if (formData.professional_categories.length > 0) {
-        formDataPayload.append('professional_categories', JSON.stringify(formData.professional_categories));
+      // Add professional categories as single ID string
+      if (formData.profesion_categories.trim()) {
+        formDataPayload.append('profesion_categories', formData.profesion_categories.trim());
       }
       
       // Add files
@@ -420,7 +425,7 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
                   >
                     <option value="">Select ID type</option>
                     {idCardTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
+                      <option key={type.value} value={type.value}>{type.name}</option>
                     ))}
                   </select>
                   {errors.identification_card && <p className="mt-1 text-sm text-red-600">{errors.identification_card}</p>}
@@ -431,12 +436,12 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
                      Professional Category <span className="text-red-500">*</span>
                    </label>
                    <select
-                     name="professional_categories"
-                     value={formData.professional_categories}
+                     name="profesion_categories"
+                     value={formData.profesion_categories}
                      onChange={handleInputChange}
                      disabled={loadingProfessions}
                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                       errors.professional_categories ? 'border-red-500' : 'border-gray-300'
+                       errors.profesion_categories ? 'border-red-500' : 'border-gray-300'
                      } ${loadingProfessions ? 'opacity-50 cursor-not-allowed' : ''}`}
                    >
                      <option value="">
@@ -448,7 +453,7 @@ const SimpleAddWorkerModal: React.FC<SimpleAddWorkerModalProps> = ({ isOpen, onC
                        </option>
                      ))}
                    </select>
-                   {errors.professional_categories && <p className="mt-1 text-sm text-red-600">{errors.professional_categories}</p>}
+                   {errors.profesion_categories && <p className="mt-1 text-sm text-red-600">{errors.profesion_categories}</p>}
                  </div>
               </div>
 
